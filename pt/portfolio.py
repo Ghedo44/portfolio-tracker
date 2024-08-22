@@ -3,6 +3,16 @@ from .transactions import Transaction
 from datetime import datetime
 from .asset_classes import Asset, Equity, Crypto, ETF, Cash
 
+
+from rich import box
+from rich.columns import Columns
+from rich.console import Group
+from rich.panel import Panel
+from rich.table import Table, Column
+from rich.text import Text
+
+from .richtools import df_to_rich_table, repr_rich
+
 class Portfolio:
     def __init__(self, assets: Dict[str, Asset] = {}, cash_accounts: Dict[str, Cash] = {}):
         self.assets: Dict[str, Asset] = assets
@@ -128,4 +138,45 @@ class Portfolio:
                         raise ValueError(f"Invalid asset type: {asset_type}")
                 assets[symbol] = asset
         return cls(assets)
+    
+    def __rich__(self):
+        equities_table = Table(title="Equities", box=box.SIMPLE, show_lines=True, min_width=60)
+        equities_table.add_column("Symbol", style="cyan", no_wrap=True)
+        equities_table.add_column("Quantity", style="magenta")
+        equities_table.add_column("Price", style="green")
+        equities_table.add_column("Value", style="blue")
+        
+        etfs_table = Table(title="ETFs", box=box.SIMPLE, show_lines=True, min_width=60)
+        etfs_table.add_column("Symbol", style="cyan", no_wrap=True)
+        etfs_table.add_column("Quantity", style="magenta")
+        etfs_table.add_column("Price", style="green")
+        etfs_table.add_column("Value", style="blue")
+        etfs_table.add_column("Expense Ratio", style="yellow")
+        
+        for asset in self.assets.values():
+            match type(asset).__name__:
+                case 'Equity':
+                    equities_table.add_row(
+                        asset.symbol,
+                        str(asset.quantity),
+                        f"${asset.price:.2f}",
+                        f"${asset.calculate_value():.2f}"
+                    )
+                case 'ETF':
+                    etfs_table.add_row(
+                        asset.symbol,
+                        str(asset.quantity),
+                        f"${asset.price:.2f}",
+                        f"${asset.calculate_value():.2f}",
+                        f"{asset.expense_ratio:.2f}%",
+                    )
+            
+        cash_table = Table(title="Cash Accounts", box=box.SIMPLE, show_lines=True, min_width=60)
+        cash_table.add_column("Currency", style="cyan", no_wrap=True)
+        cash_table.add_column("Balance", style="magenta")
+        for currency, cash_account in self.cash_accounts.items():
+            cash_table.add_row(currency, f"${cash_account.balance:.2f}")
+        return Panel(Group(equities_table, etfs_table, cash_table), title="Portfolio Summary")
 
+    def __repr__(self):
+        return repr_rich(self.__rich__())
