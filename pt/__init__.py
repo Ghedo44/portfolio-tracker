@@ -10,3 +10,17 @@ __all__ = [
     "Crypto",
     "Portfolio"
 ]
+
+def load_portfolio(filename: str) -> Portfolio:
+    """
+    Load a portfolio from a CSV file.
+    
+    Args:
+    filename: str - Path to the CSV file containing portfolio data.
+    
+    Returns:
+    Portfolio: The loaded portfolio object.
+    """
+    return Portfolio.from_csv(filename)
+
+LoadedPortfolio = load_portfolio
