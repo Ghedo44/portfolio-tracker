@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from .transactions import Transaction
 from datetime import datetime
 from .asset_classes import Asset, Equity, Crypto, ETF, Cash
@@ -88,7 +88,46 @@ class Portfolio:
         for currency, cash_account in self.cash_accounts.items():
             print(f"Cash Balance in {currency}: {cash_account.balance:.2f}")
         print(f"Total Portfolio Value: {self.calculate_total_value():.2f}")
+        
+    def new_transaction(self, symbol: str, action: str, quantity: float, price: float, date: datetime):
+        if symbol in self.assets:
+            self.assets[symbol].add_transaction(Transaction(self.assets[symbol], action, quantity, price, date))
+            
+            # // TODO: Add transaction to csv file
+        else:
+            raise ValueError(f"No asset found with symbol {symbol}.")
 
+    @classmethod
+    def from_transactions(cls, transactions: List[Transaction]):
+        """
+        Create a Portfolio instance from a list of transactions.
+        
+        Parameters:
+        transactions (List[Transaction]): A list of Transaction instances
+        
+        Returns:
+        Portfolio: A Portfolio instance with assets and cash accounts created from the transactions
+        """
+        assets = {}
+        cash_accounts = {}
+        for transaction in transactions:
+            if transaction.asset.symbol not in assets:
+                assets[transaction.asset.symbol] = transaction.asset
+            if transaction.asset.symbol not in assets:
+                assets[transaction.asset.symbol] = transaction.asset
+            if transaction.action == "BUY":
+                assets[transaction.asset.symbol].quantity += transaction.quantity
+            elif transaction.action == "SELL":
+                assets[transaction.asset.symbol].quantity -= transaction.quantity
+            elif transaction.action == "DEPOSIT":
+                if transaction.asset.symbol not in cash_accounts:
+                    cash_accounts[transaction.asset.symbol] = Cash(transaction.asset.symbol)
+                cash_accounts[transaction.asset.symbol].deposit(transaction.quantity)
+            elif transaction.action == "WITHDRAW":
+                if transaction.asset.symbol not in cash_accounts:
+                    cash_accounts[transaction.asset.symbol] = Cash(transaction.asset.symbol)
+                cash_accounts[transaction.asset.symbol].withdraw(transaction.quantity)
+        return cls(assets, cash_accounts)
     
     @classmethod
     def from_csv(cls, filename: str):
@@ -108,36 +147,39 @@ class Portfolio:
         Returns:
         Portfolio: A Portfolio instance with assets loaded from the CSV file
         """
-        import csv
-        assets = {}
-        cash_accounts = {}
-        with open(filename, "r") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                symbol, quantity, price, currency, asset_type, expense_ratio = row
-                match asset_type:
-                    case "CASH":
-                        if currency is None:
-                            raise ValueError("Currency must be specified for cash accounts.")
-                        cash_account = Cash(currency)
-                        if currency not in cash_accounts:
-                            cash_accounts[currency] = cash_account
-                        cash_accounts[currency].deposit(float(price))                        
-                        continue
-                    case "EQUITY":
-                        if currency is None or quantity is None or price is None:
-                            raise ValueError("Currency, quantity, and price must be specified for equities.")
-                        asset = Equity(symbol, float(quantity), float(price))
-                    case "ETF":
-                        if currency is None or quantity is None or price is None or expense_ratio is None:
-                            raise ValueError("Currency, quantity, price and expense_ratio must be specified for equities.")
-                        asset = ETF(symbol, float(quantity), float(price), float(expense_ratio))
-                    case "CRYPTO":
-                        asset = Crypto(symbol, float(quantity))
-                    case _:
-                        raise ValueError(f"Invalid asset type: {asset_type}")
-                assets[symbol] = asset
-        return cls(assets)
+        from .csv import read_transactions
+        transactions = read_transactions(filename)
+        return cls.from_transactions(transactions)
+        # import csv
+        # assets = {}
+        # cash_accounts = {}
+        # with open(filename, "r") as file:
+        #     reader = csv.reader(file)
+        #     for row in reader:
+        #         symbol, quantity, price, currency, asset_type, expense_ratio = row
+        #         match asset_type:
+        #             case "CASH":
+        #                 if currency is None:
+        #                     raise ValueError("Currency must be specified for cash accounts.")
+        #                 cash_account = Cash(currency)
+        #                 if currency not in cash_accounts:
+        #                     cash_accounts[currency] = cash_account
+        #                 cash_accounts[currency].deposit(float(price))                        
+        #                 continue
+        #             case "EQUITY":
+        #                 if currency is None or quantity is None or price is None:
+        #                     raise ValueError("Currency, quantity, and price must be specified for equities.")
+        #                 asset = Equity(symbol, float(quantity), float(price))
+        #             case "ETF":
+        #                 if currency is None or quantity is None or price is None or expense_ratio is None:
+        #                     raise ValueError("Currency, quantity, price and expense_ratio must be specified for equities.")
+        #                 asset = ETF(symbol, float(quantity), float(price), float(expense_ratio))
+        #             case "CRYPTO":
+        #                 asset = Crypto(symbol, float(quantity))
+        #             case _:
+        #                 raise ValueError(f"Invalid asset type: {asset_type}")
+        #         assets[symbol] = asset
+        # return cls(assets)
     
     def __rich__(self):
         equities_table = Table(title="Equities", box=box.SIMPLE, show_lines=True, min_width=60)
