@@ -1,7 +1,7 @@
 from typing import Dict, List
 from .transactions import Transaction
 from datetime import datetime
-from .asset_classes import Asset, Equity, Crypto, ETF, Cash
+from .asset_classes import Asset, Equity, Crypto, ETP, Cash
 
 
 from rich import box
@@ -73,10 +73,6 @@ class Portfolio:
         for asset in self.assets.values():
             asset.update_price()
 
-    def add_transaction(self, symbol: str, transaction: Transaction):
-        if symbol in self.assets:
-            self.assets[symbol].add_transaction(transaction)
-
     def calculate_total_value(self):
         # Include cash balance in the total portfolio value
         total_value = sum(asset.calculate_value() for asset in self.assets.values())
@@ -96,6 +92,10 @@ class Portfolio:
             # // TODO: Add transaction to csv file
         else:
             raise ValueError(f"No asset found with symbol {symbol}.")
+    
+    def add_transaction(self, symbol: str, transaction: Transaction):
+        if symbol in self.assets:
+            self.assets[symbol].add_transaction(transaction)
 
     @classmethod
     def from_transactions(cls, transactions: List[Transaction]):

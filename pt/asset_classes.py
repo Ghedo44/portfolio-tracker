@@ -38,7 +38,12 @@ class Equity(Asset):
     def calculate_value(self):
         return self.quantity * self.price
 
-class ETF(Equity):
+class ETP(Equity):
+    """
+    Exchange-Traded Product (ETP) is a type of security that is derivatively priced and traded on a stock exchange.
+    It can track an underlying asset, index, or financial instrument.
+    Types of ETPs include ETFs, ETNs, and ETCs.
+    """
     def __init__(self, symbol: str, quantity: float, price: float, expense_ratio: float, underlying_assets: Dict[str, float] = None):
         super().__init__(symbol, quantity, price)
         self.expense_ratio = expense_ratio  # Annual fee as a percentage
