@@ -8,6 +8,8 @@ from typing import List, Union
 
 from .market_data import fetch_historical_prices, fetch_price
 
+__all__ = ['Asset', 'Stock', 'ETF', 'Bond', 'Crypto', 'Assets', 'Cash']
+
 class Asset(ABC):
     def __init__(self, name, currency: str = None):
         self.name = name
