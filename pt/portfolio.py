@@ -3,9 +3,9 @@ import yfinance as yf
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
-from richtools import repr_rich
-from asset import Asset, Stock, ETF, Bond, Crypto
-from transaction import Transaction
+from pt.richtools import repr_rich
+from pt.asset import Asset, Stock, ETF, Bond, Crypto
+from pt.transaction import Transaction
 from typing import List, Dict
 
 class Portfolio:
@@ -13,10 +13,7 @@ class Portfolio:
         self.assets: Dict[str, Asset] = assets
         self.transactions: List[Transaction] = transactions
 
-        print(self.assets)
-
-
-    def add_transaction(self, transaction):
+    def add_transaction(self, transaction: Transaction):
         if transaction.asset.name not in self.assets:
             self.assets[transaction.asset.name] = transaction.asset
         if transaction.type == 'buy':
@@ -28,7 +25,7 @@ class Portfolio:
         self.transactions.append(transaction)
 
     @classmethod
-    def from_transactions(cls, csv_file):
+    def load_transactions(cls, csv_file):
         assets = {}
         transactions = []
         with open(csv_file, mode='r') as file:

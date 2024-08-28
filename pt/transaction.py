@@ -1,7 +1,8 @@
 from datetime import datetime
+from pt.asset import Asset
 
 class Transaction:
-    def __init__(self, asset, type, amount, price, date=None):
+    def __init__(self, asset: Asset, type: str, amount: int, price: float, date=None):
         self.asset = asset
         self.type = type  # 'buy' or 'sell'
         self.amount = amount

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from richtools import repr_rich
+from pt.richtools import repr_rich
 from rich.panel import Panel
 from rich import box
 from rich.text import Text

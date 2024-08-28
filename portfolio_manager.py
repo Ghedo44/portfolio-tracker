@@ -1,9 +1,8 @@
-from portfolio import Portfolio
-from asset import Stock, ETF, Bond, Crypto
-from transaction import Transaction
+from pt import Portfolio, Stock, ETF, Transaction, PortfolioFromCsv
 
 if __name__ == "__main__":
-    portfolio = Portfolio.from_transactions("portfolio_transactions.csv")
+    # portfolio = Portfolio.load_transactions("portfolio_transactions.csv")
+    portfolio: Portfolio = PortfolioFromCsv("portfolio_transactions.csv")
 
     # Example: Add a new stock transaction with dividends
     stock = Stock(name="AAPL", transaction_cost=10, dividends=50)
