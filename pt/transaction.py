@@ -5,30 +5,38 @@ from .richtools import repr_rich
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
-from typing import List
 
+from typing import Literal
+
+# AssetType = Literal["Stock", "ETF", "Crypto", "Bond"]
+TransactionType = Literal["buy", "sell"]
 
 class Transaction:
-    def __init__(self, asset: Asset, type: str, amount: int, price: float, date=None):
-        self.asset = asset
-        self.type = type  # 'buy' or 'sell'
+    def __init__(self, asset: Asset, type: TransactionType, currency: str, amount: int, price: float, transaction_cost: float, date=None):
+        self.asset: Asset = asset
+        # self.asset_type: AssetType = asset.asset_type()  # 'Stock', 'ETF', 'Crypto', 'Bond'
+        self.type: TransactionType = type  # 'buy' or 'sell'
+        self.currency = currency
         self.amount = amount
         self.price = price
+        self.transaction_cost = transaction_cost
         self.date = date or datetime.now().strftime("%Y-%m-%d")
 
     def to_csv_row(self):
-        return [self.asset.name, self.type, self.amount, self.price, self.date]
+        return [self.asset.name, self.asset.asset_type(), self.currency, self.type, self.amount, self.price, self.transaction_cost, self.date]
     
     def __rich__(self):
         # Create a table with the transaction information
         table = Table(title=self.asset.name, box=box.SIMPLE, show_header=False)
         table.add_column("Attribute")
         table.add_column("Value")
+        table.add_row("Currency", self.currency)
         table.add_row("Type", self.type)
         table.add_row("Amount", str(self.amount))
         table.add_row("Price", f"${self.price:.2f}")
+        table.add_row("Transaction Cost", f"${self.transaction_cost:.2f}")
         table.add_row("Date", self.date)
-        return Panel(table)
+        return Panel(table, title="Transaction Information")
     
     def __repr__(self):
         return repr_rich(self)
@@ -89,16 +97,22 @@ class Transactions(list):
         return (len(self) + self.transactions_per_page - 1) // self.transactions_per_page
 
     def get_paginated_transactions(self):
-        start = (self.current_page - 1) * self.transactions_per_page
-        end = start + self.transactions_per_page
+        remainder = len(self) % self.transactions_per_page
+        if self.current_page == 1:
+            remainder = remainder if remainder > 0 else self.transactions_per_page
+            return self[:remainder]
+        else:
+            start = -(self.transactions_per_page - remainder) + (self.current_page - 1) * self.transactions_per_page
+            end = start + self.transactions_per_page
         return self[start:end]
 
     def __rich__(self) -> str:
-        table = Table(title=f"Transactions (Page {self.current_page}/{self.total_pages()})", box=None, show_header=True)
+        table = Table(box=None, show_header=True)
         table.add_column("Asset Name")
         table.add_column("Amount")
         table.add_column("Price")
         table.add_column("Type")
+        table.add_column("Transaction Cost")
         table.add_column("Date")
 
         for transaction in self.get_paginated_transactions():
@@ -107,37 +121,12 @@ class Transactions(list):
                 str(transaction.amount),
                 f"${transaction.price:.2f}",
                 transaction.type,
+                f"${transaction.transaction_cost:.2f}",
                 transaction.date
             )
 
-        return Panel(table)
+        return Panel(table, title=f"Transactions (Page {self.current_page}/{self.total_pages()})")
 
     def __repr__(self):
         return repr_rich(self)
 
-# class Transactions(list):
-#     def append(self, transaction):
-#         if not isinstance(transaction, Transaction):
-#             raise ValueError("Only Transaction objects can be appended")
-#         super().append(transaction)
-
-#     def add_transaction(self, asset_name, amount, price, transaction_type):
-#         transaction = Transaction(asset_name, amount, price, transaction_type)
-#         self.append(transaction)
-
-#     def filter_by_asset(self, asset_name):
-#         return [transaction for transaction in self if transaction.asset_name == asset_name]
-
-#     def __rich__(self):
-#         table = Table(title="Transactions", box=box.SIMPLE, show_header=True)
-#         table.add_column("Asset")
-#         table.add_column("Type")
-#         table.add_column("Amount")
-#         table.add_column("Price")
-#         table.add_column("Date")
-#         for transaction in self:
-#             table.add_row(transaction.asset.name, transaction.type, str(transaction.amount), f"${transaction.price:.2f}", transaction.date)
-#         return table
-
-#     def __repr__(self):
-#         return repr_rich(self)

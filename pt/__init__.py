@@ -1,5 +1,5 @@
 from .transaction import Transaction
-from .asset import Asset, Stock, ETF, Crypto
+from .asset import Asset, Stock, ETF, Crypto, Cash
 from .portfolio import Portfolio
 
 __all__ = [
@@ -8,7 +8,9 @@ __all__ = [
     "Stock",
     "ETF",
     "Crypto",
-    "Portfolio"
+    "Portfolio",
+    "Cash",
+    "PortfolioFromCsv"
 ]
 
 def load_portfolio(filename: str) -> Portfolio:

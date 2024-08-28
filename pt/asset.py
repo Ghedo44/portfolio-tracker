@@ -6,20 +6,47 @@ from rich.text import Text
 from rich.table import Table
 from typing import List
 
+from .market_data import fetch_historical_prices, fetch_price
+
 class Asset(ABC):
-    def __init__(self, name, transaction_cost=0):
+    def __init__(self, name, currency: str = None):
         self.name = name
-        self.transaction_cost = transaction_cost
+        self.currency = currency
         self.amount = 0
         self.total_invested = 0
+        self._price_history = None
+        self._price = None
+
+    @property
+    def price(self) -> float:
+        if self._price is None:
+            self._price = fetch_price(self.name)
+        return self._price
+
+    @property
+    def price_history(self) -> List[float]:
+        if self._price_history is None:
+            self._price_history = fetch_historical_prices(self.name, period="max", interval="1d")['Close'].tolist()
+        return self._price_history
+
+    def asset_type(self):
+        return self.__class__.__name__
 
     @abstractmethod
     def calculate_value(self, price):
         pass
 
-    @abstractmethod
-    def calculate_performance(self, current_price):
-        pass
+    # @abstractmethod
+    # def calculate_performance(self):
+    #     pass
+    def calculate_performance(self):
+        current_value = self.calculate_value(self.price)
+        profit_loss = current_value - self.total_invested
+        return {
+            'current_value': current_value,
+            'profit_loss': profit_loss,
+            'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
+        }
 
     def __rich__(self) -> str:
         # Create a table with the asset information
@@ -28,75 +55,77 @@ class Asset(ABC):
         table.add_column("Value")
         table.add_row("Amount", str(self.amount))
         table.add_row("Total Invested", f"${self.total_invested:.2f}")
-        table.add_row("Transaction Cost", f"${self.transaction_cost:.2f}")
-        return Panel(table)
+        table.add_row("Price", f"${self.price:.2f}")
+        table.add_row("Currency", self.currency)
+        return Panel(table, title="Asset Information")
         
     def __repr__(self):
         return repr_rich(self)
 
 class Stock(Asset):
-    def __init__(self, name, transaction_cost=0, dividends=0):
-        super().__init__(name, transaction_cost)
+    def __init__(self, name, currency, dividends=0):
+        super().__init__(name, currency)
         self.dividends = dividends
 
     def calculate_value(self, price):
         return self.amount * price
 
-    def calculate_performance(self, current_price):
-        current_value = self.calculate_value(current_price)
-        profit_loss = current_value - self.total_invested + self.dividends
-        return {
-            'current_value': current_value,
-            'profit_loss': profit_loss,
-            'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
-        }
+    # def calculate_performance(self):
+    #     current_value = self.calculate_value(self.price)
+    #     profit_loss = current_value - self.total_invested + self.dividends
+    #     return {
+    #         'current_value': current_value,
+    #         'profit_loss': profit_loss,
+    #         'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
+    #     }
 
 class ETF(Asset):
-    def __init__(self, name, transaction_cost=0, annual_cost=0):
-        super().__init__(name, transaction_cost)
+    def __init__(self, name, currency, annual_cost=0):
+        super().__init__(name, currency)
         self.annual_cost = annual_cost
 
     def calculate_value(self, price):
         return self.amount * price
 
-    def calculate_performance(self, current_price):
-        current_value = self.calculate_value(current_price)
-        profit_loss = current_value - self.total_invested - self.annual_cost
-        return {
-            'current_value': current_value,
-            'profit_loss': profit_loss,
-            'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
-        }
+    # def calculate_performance(self):
+    #     current_value = self.calculate_value(self.price)
+    #     profit_loss = current_value - self.total_invested - self.annual_cost
+    #     return {
+    #         'current_value': current_value,
+    #         'profit_loss': profit_loss,
+    #         'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
+    #     }
 
 class Bond(Asset):
-    def __init__(self, name, transaction_cost=0, interest_rate=0):
-        super().__init__(name, transaction_cost)
+    def __init__(self, name, interest_rate=0):
+        super().__init__(name)
         self.interest_rate = interest_rate
 
     def calculate_value(self, price):
         return self.amount * price
 
-    def calculate_performance(self, current_price):
-        current_value = self.calculate_value(current_price)
-        profit_loss = current_value - self.total_invested + (self.interest_rate * self.total_invested)
-        return {
-            'current_value': current_value,
-            'profit_loss': profit_loss,
-            'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
-        }
+    # def calculate_performance(self):
+    #     current_value = self.calculate_value(self.price)
+    #     profit_loss = current_value - self.total_invested + (self.interest_rate * self.total_invested)
+    #     return {
+    #         'current_value': current_value,
+    #         'profit_loss': profit_loss,
+    #         'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
+    #     }
 
 class Crypto(Asset):
     def calculate_value(self, price):
         return self.amount * price
 
-    def calculate_performance(self, current_price):
-        current_value = self.calculate_value(current_price)
-        profit_loss = current_value - self.total_invested
-        return {
-            'current_value': current_value,
-            'profit_loss': profit_loss,
-            'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
-        }
+    # def calculate_performance(self):
+    #     current_value = self.calculate_value(self.price)
+    #     profit_loss = current_value - self.total_invested
+    #     return {
+    #         'current_value': current_value,
+    #         'profit_loss': profit_loss,
+    #         'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
+    #     }
+
 
 class Assets(dict):
     def __setitem__(self, key, value):
@@ -122,21 +151,34 @@ class Assets(dict):
             self[name] = new_asset
 
     def __rich__(self) -> str:
-        table = Table(title="Assets Portfolio", box=None, show_header=True)
+        table = Table(box=None, show_header=True)
         table.add_column("Asset Name")
         table.add_column("Amount")
         table.add_column("Total Invested")
-        table.add_column("Transaction Cost")
+        table.add_column("Price")
+        table.add_column("Currency")
         
         for asset in self.values():
             table.add_row(
                 asset.name,
                 str(asset.amount),
                 f"${asset.total_invested:.2f}",
-                f"${asset.transaction_cost:.2f}"
+                f"${asset.price:.2f}",
+                asset.currency
             )
 
-        return Panel(table)
+        return Panel(table, title="Assets")
+    
+    def __repr__(self):
+        return repr_rich(self)
+
+
+class Cash:
+    def __init__(self, amount):
+        self.amount = amount
+
+    def __rich__(self) -> str:
+        return Panel(Text(f"Amount: ${self.amount:.2f}"), title="Cash")
     
     def __repr__(self):
         return repr_rich(self)

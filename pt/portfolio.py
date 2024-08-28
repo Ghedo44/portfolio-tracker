@@ -1,5 +1,4 @@
 import csv
-import yfinance as yf
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
@@ -17,10 +16,9 @@ class Portfolio:
             self.assets[transaction.asset.name] = transaction.asset
         if transaction.type == 'buy':
             self.assets[transaction.asset.name].amount += transaction.amount
-            self.assets[transaction.asset.name].total_invested += transaction.amount * transaction.price + transaction.asset.transaction_cost
-        elif transaction.type == 'sell':
+            self.assets[transaction.asset.name].total_invested += transaction.amount * transaction.price
             self.assets[transaction.asset.name].amount -= transaction.amount
-            self.assets[transaction.asset.name].total_invested -= transaction.amount * transaction.price + transaction.asset.transaction_cost
+            self.assets[transaction.asset.name].total_invested -= transaction.amount * transaction.price
         self.transactions.append(transaction)
 
     @classmethod
@@ -30,83 +28,81 @@ class Portfolio:
         with open(csv_file, mode='r') as file:
             reader = csv.reader(file)
             for row in reader:
-                name, type, amount, price, date = row
-                asset_type = cls.identify_asset_type(name)
-                asset = asset_type(name=name)
-                transaction = Transaction(asset, type, float(amount), float(price), date)
+                name, asset_type, currency, transaction_type, amount, price, transaction_cost, date = row
+                asset = cls.identify_asset(asset_type)(name=name, currency=currency)
+                transaction = Transaction(asset, transaction_type, currency, float(amount), float(price), float(transaction_cost), date)
                 
                 if asset.name not in assets:
                     assets[asset.name] = asset
                 if transaction.type == 'buy':
                     assets[asset.name].amount += transaction.amount
-                    assets[asset.name].total_invested += transaction.amount * transaction.price + asset.transaction_cost
+                    assets[asset.name].total_invested += transaction.amount * transaction.price
                 elif transaction.type == 'sell':
                     assets[asset.name].amount -= transaction.amount
-                    assets[asset.name].total_invested -= transaction.amount * transaction.price + asset.transaction_cost    
+                    assets[asset.name].total_invested -= transaction.amount * transaction.price    
                 
                 transactions.append(transaction)
 
         return cls(assets, transactions)
     
-
     def save_transactions(self, csv_file):
         with open(csv_file, mode='w', newline='') as file:
             writer = csv.writer(file)
             for transaction in self.transactions:
                 writer.writerow(transaction.to_csv_row())
 
-    def fetch_prices(self):
-        for asset_name, asset in self.assets.items():
-            data = yf.Ticker(asset_name).history(period='1d')
-            price = data['Close'].iloc[-1]
-            yield asset_name, price
 
     def calculate_performance(self):
         performance = {}
         for asset_name, asset in self.assets.items():
-            price = next(price for a, price in self.fetch_prices() if a == asset_name)
-            performance[asset_name] = asset.calculate_performance(price)
+            performance[asset_name] = asset.calculate_performance()
         return performance
 
-    
+    # def display_performance(self):
+    #     table = Table(box=box.SIMPLE, show_lines=True)
 
-    def display_performance(self):
-        table = Table(title="Performance", box=box.SIMPLE, show_lines=True)
+    #     table.add_column("Asset", justify="right", style="cyan", no_wrap=True)
+    #     table.add_column("Initial Value", justify="right", style="yellow")
+    #     table.add_column("Current Value", justify="right", style="green")
+    #     table.add_column("Profit/Loss", justify="right", style="red")
+    #     table.add_column("Profit/Loss %", justify="right", style="blue")
 
-        table.add_column("Asset", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Initial Value", justify="right", style="yellow")
-        table.add_column("Current Value", justify="right", style="green")
-        table.add_column("Profit/Loss", justify="right", style="red")
-        table.add_column("Profit/Loss %", justify="right", style="blue")
+    #     performance = self.calculate_performance()
+    #     for asset_name, data in performance.items():
+    #         table.add_row(
+    #             asset_name,
+    #             f"${self.assets[asset_name].total_invested:.2f}",
+    #             f"${data['current_value']:.2f}",
+    #             f"${data['profit_loss']:.2f}",
+    #             f"{data['profit_loss_percentage']:.2f}%"
+    #         )
 
-        performance = self.calculate_performance()
-        for asset_name, data in performance.items():
-            table.add_row(
-                asset_name,
-                f"${self.assets[asset_name].total_invested:.2f}",
-                f"${data['current_value']:.2f}",
-                f"${data['profit_loss']:.2f}",
-                f"{data['profit_loss_percentage']:.2f}%"
-            )
-
-        print(repr_rich(Panel(table)))
+    #     print(repr_rich(Panel(table, title="Performance")))
 
 
     def __rich__(self):
-        table = Table(title="Portfolio", box=box.SIMPLE, show_lines=True)
+        table = Table(box=box.SIMPLE, show_lines=True)
 
         table.add_column("Asset", justify="right", style="cyan", no_wrap=True)
         table.add_column("Amount", style="magenta")
         table.add_column("Current Value", justify="right", style="green")
+        table.add_column("Total Invested", justify="right", style="blue")
+        table.add_column("Profit/Loss", justify="right", style="red")
+        table.add_column("Profit/Loss %", justify="right", style="blue")
+        table.add_column("Price", justify="right", style="yellow")
 
         performance = self.calculate_performance()
         for asset_name, data in performance.items():
             table.add_row(
                 asset_name,
                 str(self.assets[asset_name].amount),
-                f"${data['current_value']:.2f}"
+                f"${data['current_value']:.2f}",
+                f"${self.assets[asset_name].total_invested:.2f}",
+                f"${data['profit_loss']:.2f}",
+                f"{data['profit_loss_percentage']:.2f}%",
+                f"${self.assets[asset_name].price:.2f}"
             )
-        return Panel(table)
+        return Panel(table, title="Portfolio Summary")
     
     def __repr__(self):
         return repr_rich(self.__rich__())
@@ -116,12 +112,15 @@ class Portfolio:
 
 
     @staticmethod
-    def identify_asset_type(name):
-        if name.startswith("BTC") or name.startswith("ETH"):
-            return Crypto
-        elif "Bond" in name:
-            return Bond
-        elif "ETF" in name:
-            return ETF
-        else:
-            return Stock
+    def identify_asset(asset_type):
+        match asset_type:
+            case "Stock":
+                return Stock
+            case "ETF":
+                return ETF
+            case "Bond":
+                return Bond
+            case "Crypto":
+                return Crypto
+            case _:
+                raise ValueError(f"Unknown asset type: {asset_type}")
