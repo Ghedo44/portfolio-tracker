@@ -24,5 +24,5 @@ if __name__ == "__main__":
     print(portfolio.assets)
     print(portfolio.assets['AAPL'])
     print(portfolio.transactions)
-    print(portfolio.transactions.first_page())
+    # print(portfolio.transactions.first_page())
     print(portfolio.transactions[-1])

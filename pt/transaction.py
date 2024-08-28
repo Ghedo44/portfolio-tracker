@@ -6,7 +6,7 @@ from rich import box
 from rich.panel import Panel
 from rich.table import Table
 
-from typing import Literal
+from typing import Literal, Union
 
 # AssetType = Literal["Stock", "ETF", "Crypto", "Bond"]
 TransactionType = Literal["buy", "sell"]
@@ -49,6 +49,10 @@ class Transactions(list):
         self.transactions_per_page = transactions_per_page
         self._current_page = None
 
+    # If access the item by index, return the transaction
+    def __getitem__(self, index) -> Union[Transaction, 'Transactions']:
+        return super().__getitem__(index)
+
     @property
     def current_page(self):
         if self._current_page is None:
@@ -64,8 +68,8 @@ class Transactions(list):
         transaction = Transaction(asset_name, amount, price, transaction_type)
         self.append(transaction)
 
-    def filter_by_asset(self, asset_name):
-        return [transaction for transaction in self if transaction.name == asset_name]
+    def filter_by_asset(self, asset_name) -> 'Transactions':
+        return Transactions([transaction for transaction in self if transaction.name == asset_name])
 
     def first_page(self):
         self._current_page = 1

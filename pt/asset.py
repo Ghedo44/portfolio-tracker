@@ -4,7 +4,7 @@ from rich.panel import Panel
 from rich import box
 from rich.text import Text
 from rich.table import Table
-from typing import List
+from typing import List, Union
 
 from .market_data import fetch_historical_prices, fetch_price
 
@@ -12,6 +12,7 @@ class Asset(ABC):
     def __init__(self, name, currency: str = None):
         self.name = name
         self.currency = currency
+        self.average_loading_price = 0
         self.amount = 0
         self.total_invested = 0
         self._price_history = None
@@ -128,16 +129,22 @@ class Crypto(Asset):
 
 
 class Assets(dict):
-    def __setitem__(self, key, value):
-        if not isinstance(value, Asset):
-            raise ValueError("Value must be an instance of Asset")
-
+    def __setitem__(self, key: str, value: Asset):
         if key in self:
             existing_asset = self[key]
             existing_asset.amount += value.amount
+            existing_asset.average_loading_price = (existing_asset.total_invested + value.total_invested) / existing_asset.amount
             existing_asset.total_invested += value.total_invested
         else:
             super().__setitem__(key, value)
+
+    def __getitem__(self, key: str) -> Asset:
+        return super().__getitem__(key)
+
+    def filter(self, names: Union[str, List[str]]) -> 'Assets':
+        if isinstance(names, str):
+            names = [names]
+        return Assets({name: self[name] for name in names if name in self})
 
     def add_asset(self, name, amount, total_invested, transaction_cost=0):
         if name in self:
@@ -149,6 +156,12 @@ class Assets(dict):
             new_asset.amount = amount
             new_asset.total_invested = total_invested
             self[name] = new_asset
+
+    def calculate_performance(self):
+        performance = {}
+        for asset_name, asset in self.items():
+            performance[asset_name] = asset.calculate_performance()
+        return performance
 
     def __rich__(self) -> str:
         table = Table(box=None, show_header=True)
