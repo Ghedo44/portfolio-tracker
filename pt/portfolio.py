@@ -3,12 +3,13 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 from pt.richtools import repr_rich
-from pt.asset import Assets, Asset, Stock, ETF, Bond, Crypto
+from pt.asset import Assets, Asset, Stock, ETF, Bond, Crypto, Cash
 from pt.transaction import Transaction, Transactions
 
 class Portfolio:
-    def __init__(self, assets: Assets, transactions: Transactions):
+    def __init__(self, assets: Assets, cash: Cash, transactions: Transactions):
         self.assets: Assets = assets
+        self.cash: Cash = cash
         self.transactions: Transactions = transactions
 
     def add_transaction(self, transaction: Transaction):
@@ -27,10 +28,20 @@ class Portfolio:
     def load_transactions(cls, csv_file):
         assets = Assets()
         transactions = Transactions()
+        cash = Cash()
         with open(csv_file, mode='r') as file:
             reader = csv.reader(file)
             for row in reader:
                 name, asset_type, currency, transaction_type, amount, price, transaction_cost, date = row
+
+                # If asset_type is Cash
+                if asset_type == 'Cash':
+                    if transaction_type == 'deposit':
+                        cash = cash.deposit(float(amount))
+                    elif transaction_type == 'withdraw':
+                        cash = cash.withdraw(float(amount))
+                    continue
+
                 asset: Asset = cls.identify_asset(asset_type)(name=name, currency=currency)
                 transaction = Transaction(asset, transaction_type, currency, float(amount), float(price), float(transaction_cost), date)
                 

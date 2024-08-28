@@ -187,11 +187,31 @@ class Assets(dict):
 
 
 class Cash:
-    def __init__(self, amount):
-        self.amount = amount
+    def __init__(self, currency: str = "EUR"):
+        self.currency = currency
+        self.balance = 0.0
 
-    def __rich__(self) -> str:
-        return Panel(Text(f"Amount: ${self.amount:.2f}"), title="Cash")
+    def deposit(self, amount: float):
+        if amount > 0:
+            self.balance += amount
+        else:
+            raise ValueError("Deposit amount must be positive.")
+
+    def withdraw(self, amount: float):
+        if amount > 0:
+            if amount <= self.balance:
+                self.balance -= amount
+            else:
+                raise ValueError("Insufficient cash balance.")
+        else:
+            raise ValueError("Withdrawal amount must be positive.")
+
+    def __str__(self):
+        return f"Cash Balance: {self.balance:.2f} {self.currency}"
+    
+    def __rich__(self):
+        text = Text(f"Cash Balance: {self.balance:.2f} {self.currency}")
+        return Panel(text, title="Cash Account")
     
     def __repr__(self):
         return repr_rich(self)
