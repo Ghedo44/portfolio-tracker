@@ -23,4 +23,5 @@ if __name__ == "__main__":
 
     print(portfolio.assets)
     print(portfolio.transactions)
+    print(portfolio.transactions.first_page())
     print(portfolio.transactions[-1])
