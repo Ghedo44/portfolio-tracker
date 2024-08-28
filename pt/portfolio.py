@@ -4,14 +4,13 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 from pt.richtools import repr_rich
-from pt.asset import Asset, Stock, ETF, Bond, Crypto
-from pt.transaction import Transaction
-from typing import List, Dict
+from pt.asset import Assets, Asset, Stock, ETF, Bond, Crypto
+from pt.transaction import Transaction, Transactions
 
 class Portfolio:
-    def __init__(self, assets: Dict[str, Asset], transactions: List[Transaction]):
-        self.assets: Dict[str, Asset] = assets
-        self.transactions: List[Transaction] = transactions
+    def __init__(self, assets: Assets, transactions: Transactions):
+        self.assets: Assets = assets
+        self.transactions: Transactions = transactions
 
     def add_transaction(self, transaction: Transaction):
         if transaction.asset.name not in self.assets:
@@ -26,8 +25,8 @@ class Portfolio:
 
     @classmethod
     def load_transactions(cls, csv_file):
-        assets = {}
-        transactions = []
+        assets = Assets()
+        transactions = Transactions()
         with open(csv_file, mode='r') as file:
             reader = csv.reader(file)
             for row in reader:
@@ -46,7 +45,7 @@ class Portfolio:
                     assets[asset.name].total_invested -= transaction.amount * transaction.price + asset.transaction_cost    
                 
                 transactions.append(transaction)
-        
+
         return cls(assets, transactions)
     
 

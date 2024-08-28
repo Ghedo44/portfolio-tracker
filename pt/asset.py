@@ -4,6 +4,7 @@ from rich.panel import Panel
 from rich import box
 from rich.text import Text
 from rich.table import Table
+from typing import List
 
 class Asset(ABC):
     def __init__(self, name, transaction_cost=0):
@@ -96,3 +97,46 @@ class Crypto(Asset):
             'profit_loss': profit_loss,
             'profit_loss_percentage': (profit_loss / self.total_invested) * 100 if self.total_invested > 0 else 0
         }
+
+class Assets(dict):
+    def __setitem__(self, key, value):
+        if not isinstance(value, Asset):
+            raise ValueError("Value must be an instance of Asset")
+
+        if key in self:
+            existing_asset = self[key]
+            existing_asset.amount += value.amount
+            existing_asset.total_invested += value.total_invested
+        else:
+            super().__setitem__(key, value)
+
+    def add_asset(self, name, amount, total_invested, transaction_cost=0):
+        if name in self:
+            existing_asset = self[name]
+            existing_asset.amount += amount
+            existing_asset.total_invested += total_invested
+        else:
+            new_asset = Asset(name, transaction_cost)
+            new_asset.amount = amount
+            new_asset.total_invested = total_invested
+            self[name] = new_asset
+
+    def __rich__(self) -> str:
+        table = Table(title="Assets Portfolio", box=None, show_header=True)
+        table.add_column("Asset Name")
+        table.add_column("Amount")
+        table.add_column("Total Invested")
+        table.add_column("Transaction Cost")
+        
+        for asset in self.values():
+            table.add_row(
+                asset.name,
+                str(asset.amount),
+                f"${asset.total_invested:.2f}",
+                f"${asset.transaction_cost:.2f}"
+            )
+
+        return Panel(table)
+    
+    def __repr__(self):
+        return repr_rich(self)

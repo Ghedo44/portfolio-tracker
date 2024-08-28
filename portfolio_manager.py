@@ -20,3 +20,7 @@ if __name__ == "__main__":
     # Display portfolio and performance
     portfolio.display_portfolio()
     portfolio.display_performance()
+
+    print(portfolio.assets)
+    print(portfolio.transactions)
+    print(portfolio.transactions[-1])
