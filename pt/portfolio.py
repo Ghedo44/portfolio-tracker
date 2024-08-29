@@ -34,12 +34,17 @@ class Portfolio:
             for row in reader:
                 name, asset_type, currency, transaction_type, amount, price, transaction_cost, date = row
 
+                name = name.upper()
+                asset_type = asset_type.capitalize()
+                currency = currency.upper()
+                transaction_type = transaction_type.lower()
+
                 # If asset_type is Cash
                 if asset_type == 'Cash':
                     if transaction_type == 'deposit':
-                        cash = cash.deposit(float(amount))
+                        cash = cash.deposit(currency, float(amount))
                     elif transaction_type == 'withdraw':
-                        cash = cash.withdraw(float(amount))
+                        cash = cash.withdraw(currency, float(amount))
                     continue
 
                 asset: Asset = cls.identify_asset(asset_type)(name=name, currency=currency)
@@ -51,13 +56,17 @@ class Portfolio:
                     assets[asset.name].average_loading_price = cls.average_loading_price(asset, transaction.amount, transaction.price)
                     assets[asset.name].amount += transaction.amount
                     assets[asset.name].total_invested += transaction.amount * transaction.price
+
+                    cash.asset_bought(currency, transaction.amount * transaction.price, transaction.transaction_cost)
                 elif transaction.type == 'sell':
                     assets[asset.name].amount -= transaction.amount
-                    assets[asset.name].total_invested -= transaction.amount * transaction.price    
+                    assets[asset.name].total_invested -= transaction.amount * transaction.price   
+
+                    cash.asset_sold(currency, transaction.amount * transaction.price, transaction.transaction_cost) 
                 
                 transactions.append(transaction)
 
-        return cls(assets, transactions)
+        return cls(assets, cash, transactions)
     
     def save_transactions(self, csv_file):
         with open(csv_file, mode='w', newline='') as file:

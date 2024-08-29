@@ -4,7 +4,7 @@ from rich.panel import Panel
 from rich import box
 from rich.text import Text
 from rich.table import Table
-from typing import List, Union
+from typing import List, Union, Dict
 
 from .market_data import fetch_historical_prices, fetch_price
 
@@ -189,31 +189,99 @@ class Assets(dict):
 
 
 class Cash:
-    def __init__(self, currency: str = "EUR"):
-        self.currency = currency
-        self.balance = 0.0
+    def __init__(self, exchange_rates: Dict[str, Dict[str, float]] = None):
+        # Holds the balance for each currency
+        self.balances = {}  # e.g., {"EUR": 1000.0, "USD": 500.0}
+        self.exchange_rates = exchange_rates or {}  # e.g., {"EUR": {"USD": 1.1, "GBP": 0.85}}
 
-    def deposit(self, amount: float):
+    def __getitem__(self, currency: str) -> float:
+        """Return the balance for the given currency, defaulting to 0 if it doesn't exist"""
+        return self.balances.get(currency, 0.0)
+
+    def __setitem__(self, currency: str, amount: float):
+        # Set the balance for the given currency
+        if amount < 0:
+            raise ValueError("Balance amount cannot be negative.")
+        self.balances[currency] = amount
+
+    def __delitem__(self, currency: str):
+        # Remove the balance for the given currency
+        if currency in self.balances:
+            del self.balances[currency]
+        else:
+            raise KeyError(f"Currency {currency} not found.")
+        
+    def get(self, currency: str) -> float:
+        """Return the balance for the given currency, defaulting to 0 if it doesn't exist"""
+        return self.balances.get(currency, 0.0)
+        
+    def deposit(self, currency: str, amount: float):
         if amount > 0:
-            self.balance += amount
+            if currency in self.balances:
+                self.balances[currency] += amount
+            else:
+                self.balances[currency] = amount
         else:
             raise ValueError("Deposit amount must be positive.")
 
-    def withdraw(self, amount: float):
+    def withdraw(self, currency: str, amount: float):
         if amount > 0:
-            if amount <= self.balance:
-                self.balance -= amount
+            if currency in self.balances and self.balances[currency] >= amount:
+                self.balances[currency] -= amount
             else:
-                raise ValueError("Insufficient cash balance.")
+                raise ValueError("Insufficient cash balance or currency not found.")
         else:
             raise ValueError("Withdrawal amount must be positive.")
 
+    def asset_bought(self, currency: str, amount: float, transaction_cost: float, transaction_cost_currency: str = None):
+        transaction_cost_currency = transaction_cost_currency if transaction_cost_currency is not None else currency
+        if amount > 0:
+            if currency in self.balances and self.balances[currency] >= amount and self.balances[transaction_cost_currency] >= transaction_cost:
+                if transaction_cost_currency == currency:
+                    self.balances[currency] -= amount + transaction_cost
+                else:
+                    self.balances[currency] -= amount
+                    self.balances[transaction_cost_currency] -= transaction_cost
+            else:
+                raise ValueError(f"Insufficient cash balance for {currency}.")
+        else:
+            raise ValueError("Transaction amount must be positive.")
+        
+    def asset_sold(self, currency: str, amount: float, transaction_cost: float, transaction_cost_currency: str = None):
+        transaction_cost_currency = transaction_cost_currency if transaction_cost_currency is not None else currency
+        if amount > 0:
+            if transaction_cost_currency == currency:
+                self.balances[currency] += amount - transaction_cost
+            else:
+                self.balances[currency] += amount
+                self.balances[transaction_cost_currency] -= transaction_cost
+        else:
+            raise ValueError("Transaction amount must be positive.")
+
+
+    def convert(self, from_currency: str, to_currency: str, amount: float) -> float:
+        if from_currency == to_currency:
+            return amount
+        elif from_currency in self.exchange_rates and to_currency in self.exchange_rates[from_currency]:
+            rate = self.exchange_rates[from_currency][to_currency]
+            return amount * rate
+        else:
+            raise ValueError(f"Exchange rate from {from_currency} to {to_currency} not available.")
+
+    def total_balance(self, target_currency: str) -> float:
+        total = 0.0
+        for currency, balance in self.balances.items():
+            total += self.convert(currency, target_currency, balance)
+        return total
+
     def __str__(self):
-        return f"Cash Balance: {self.balance:.2f} {self.currency}"
-    
+        balances_str = ", ".join([f"{currency}: {balance:.2f}" for currency, balance in self.balances.items()])
+        return f"Balances: {balances_str}"
+
     def __rich__(self):
-        text = Text(f"Cash Balance: {self.balance:.2f} {self.currency}")
-        return Panel(text, title="Cash Account")
+        balances_str = "\n".join([f"{currency}: {balance:.2f}" for currency, balance in self.balances.items()])
+        text = Text(balances_str)
+        return Panel(text, title="Cash Balances")
     
     def __repr__(self):
         return repr_rich(self)
