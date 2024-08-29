@@ -3,6 +3,7 @@ from pt.richtools import repr_rich
 from rich.panel import Panel
 from rich import box
 from rich.text import Text
+from rich.console import Group
 from rich.table import Table
 from typing import List, Union, Dict
 
@@ -161,17 +162,52 @@ class Assets(dict):
 
     def calculate_performance(self):
         performance = {}
+        total_perfomance = 0
         for asset_name, asset in self.items():
-            performance[asset_name] = asset.calculate_performance()
-        return performance
+            asset_performance = asset.calculate_performance()
+            performance[asset_name] = asset_performance
+            total_perfomance += asset_performance['profit_loss']
+        
+        total = {
+            'current_value': sum([asset_performance['current_value'] for asset_performance in performance.values()]),
+            'profit_loss': total_perfomance,
+            'profit_loss_percentage': (total_perfomance / sum([asset.total_invested for asset in self.values()])) * 100
+        }
+        return performance, total
+    
+        # for asset_name, asset in self.items():
+        #     performance[asset_name] = asset.calculate_performance()
+        # return performance
 
     def __rich__(self) -> str:
+        performance, total = self.calculate_performance()
+        
+
+        # Print total performance
+        total_value = total['current_value']
+        total_profit_loss = total['profit_loss']
+        total_profit_loss_percentage = total['profit_loss_percentage']
+        total_invested = sum([asset.total_invested for asset in self.values()])
+        total_performance_table = Table(box=None, show_header=True)
+        total_performance_table.add_column("Total Value", justify="right", style="green")
+        total_performance_table.add_column("Total Profit/Loss", justify="right", style="red")
+        total_performance_table.add_column("Total Profit/Loss %", justify="right", style="blue")
+        total_performance_table.add_column("Total Invested", justify="right", style="blue")
+        total_performance_table.add_row(
+            f"${total_value:.2f}",
+            f"${total_profit_loss:.2f}",
+            f"{total_profit_loss_percentage:.2f}%",
+            f"${total_invested:.2f}"
+        )
+        total_performance_panel = Panel(total_performance_table, title="Total Performance")
+
         table = Table(box=None, show_header=True)
         table.add_column("Asset Name")
         table.add_column("Amount")
         table.add_column("Total Invested")
         table.add_column("Price")
         table.add_column("Currency")
+        table.add_column("Performance")
         
         for asset in self.values():
             table.add_row(
@@ -179,10 +215,11 @@ class Assets(dict):
                 str(asset.amount),
                 f"${asset.total_invested:.2f}",
                 f"${asset.price:.2f}",
-                asset.currency
+                asset.currency,
+                f"${performance[asset.name]['profit_loss']:.2f} ({performance[asset.name]['profit_loss_percentage']:.2f}%)"
             )
-
-        return Panel(table, title="Assets")
+        # Panel(table, title="Assets")
+        return Group(total_performance_panel, Panel(table, title="Assets"))
     
     def __repr__(self):
         return repr_rich(self)

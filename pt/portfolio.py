@@ -35,16 +35,15 @@ class Portfolio:
                 name, asset_type, currency, transaction_type, amount, price, transaction_cost, date = row
 
                 name = name.upper()
-                asset_type = asset_type.capitalize()
                 currency = currency.upper()
                 transaction_type = transaction_type.lower()
 
                 # If asset_type is Cash
                 if asset_type == 'Cash':
                     if transaction_type == 'deposit':
-                        cash = cash.deposit(currency, float(amount))
+                        cash.deposit(currency, float(amount))
                     elif transaction_type == 'withdraw':
-                        cash = cash.withdraw(currency, float(amount))
+                        cash.withdraw(currency, float(amount))
                     continue
 
                 asset: Asset = cls.identify_asset(asset_type)(name=name, currency=currency)
@@ -111,7 +110,7 @@ class Portfolio:
         table.add_column("Profit/Loss %", justify="right", style="blue")
         table.add_column("Price", justify="right", style="yellow")
 
-        performance = self.calculate_performance()
+        performance, _ = self.calculate_performance()
         for asset_name, data in performance.items():
             table.add_row(
                 asset_name,
